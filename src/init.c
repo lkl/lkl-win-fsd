@@ -1,7 +1,7 @@
 #include <ddk/ntddk.h>
 
 
-void DriverUnload (PDRIVER_OBJECT driver)
+void DDKAPI DriverUnload (PDRIVER_OBJECT driver)
 {
 	DbgPrint("driver unload");
 }

@@ -4,6 +4,13 @@
 const int LKL_MEMORY_SIZE = 64 * 1024 * 1024;
 extern int lkl_env_fini(void);
 
+static void stop(void)
+{
+	KSEMAPHORE stopme;
+	KeInitializeSemaphore(&stopme, 0, 10);
+	KeWaitForSingleObject(&stopme, Executive, KernelMode, FALSE, NULL);
+}
+
 void DDKAPI DriverUnload (PDRIVER_OBJECT driver)
 {
 	DbgPrint("drvpoc: unload compiled at " __TIME__ " on " __DATE__);

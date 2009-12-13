@@ -76,6 +76,11 @@ $(PRJ_NAME).sys: $(INC) $(PRJ_SRC)
 	-nostartfiles -Llib -lmingw-patch -lntoskrnl -lhal -nostdlib \
 	-shared -o $@
 
+force:
+	rm -f ntk/lkl.a
+	make all
+	mv drvpoc.sys /home/gringo/smbshare/
+
 clean:
 	rm -rf .deps $(PRJ_NAME).sys
 	rm -f src/*.o

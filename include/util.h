@@ -14,4 +14,11 @@ NTSTATUS VcbListFini(VCB_LIST *l);
 
 VOID Stop(VOID);
 
+
+/* get the name of the process on behalf of which we're running */
+extern ULONG ProcessNameOffset;
+ULONG GetProcessNameOffset(VOID);
+PCHAR GetCurrentProcessName();
+
+
 #endif//_LKLVFS_UTIL_H__

@@ -12,6 +12,7 @@ LKLVFS * g_lklvfs = NULL;
  */
 static NTSTATUS LklFileSystemDriverFini(PDRIVER_OBJECT driver)
 {
+	IoUnregisterFileSystem(g_lklvfs->device);
 	IoDeleteSymbolicLink((PUNICODE_STRING) &lkl_dos_dev);
 	VcbListFini(&g_lklvfs->vcb_list);
 	IoDeleteDevice(g_lklvfs->device);
@@ -33,6 +34,43 @@ VOID DDKAPI DriverUnload(PDRIVER_OBJECT driver)
 }
 
 
+VOID InitializeFunctionPointers(PDRIVER_OBJECT driver)
+{
+	int i, len;
+	int idx[] = {
+		/* functions that MUST be supported */
+		IRP_MJ_CREATE,
+		IRP_MJ_CLOSE,
+		IRP_MJ_READ,
+		IRP_MJ_WRITE,
+		IRP_MJ_DEVICE_CONTROL,
+		IRP_MJ_DIRECTORY_CONTROL,
+		IRP_MJ_FILE_SYSTEM_CONTROL,
+		IRP_MJ_QUERY_INFORMATION,
+		IRP_MJ_QUERY_VOLUME_INFORMATION,
+		IRP_MJ_SET_INFORMATION,
+		IRP_MJ_CLEANUP,
+
+		/* these functions are optional */
+		IRP_MJ_FLUSH_BUFFERS,
+		IRP_MJ_SHUTDOWN,
+		IRP_MJ_SET_VOLUME_INFORMATION,
+		IRP_MJ_LOCK_CONTROL,
+		IRP_MJ_QUERY_SECURITY,
+		IRP_MJ_SET_SECURITY,
+		IRP_MJ_QUERY_EA,
+		IRP_MJ_SET_EA,
+
+#if (_WIN32_WINNT >= 0x0500)
+		IRP_MJ_PNP,
+#endif
+	};
+
+	/* all calls go through the same build request method */
+	len = sizeof(idx)/sizeof(idx[0]);
+	for (i = 0; i < len; i++)
+		driver->MajorFunction[idx[i]] = LklVfsBuildRequest;
+}
 
 static NTSTATUS LklFileSystemDriverInit(PDRIVER_OBJECT driver, PUNICODE_STRING registry)
 {
@@ -63,6 +101,9 @@ static NTSTATUS LklFileSystemDriverInit(PDRIVER_OBJECT driver, PUNICODE_STRING r
 	if (status != STATUS_SUCCESS)
 		goto free_vcb_list;
 
+	InitializeFunctionPointers(driver);
+	IoRegisterFileSystem(g_lklvfs->device);
+
 	return status;
 
 free_vcb_list:
@@ -90,6 +131,8 @@ NTSTATUS DDKAPI DriverEntry (PDRIVER_OBJECT driver, PUNICODE_STRING registry)
 		status = STATUS_UNSUCCESSFUL;
 		goto error_out;
 	}
+
+	ProcessNameOffset = GetProcessNameOffset();
 
 	status = LklFileSystemDriverInit(driver, registry);
 	if (status != STATUS_SUCCESS)

@@ -20,5 +20,7 @@ typedef struct _LKLVFS {
 
 extern LKLVFS *g_lklvfs;
 
+DDKAPI NTSTATUS LklVfsBuildRequest(PDEVICE_OBJECT device, PIRP Irp);
+
 #endif //_NTKVFS_H__
 

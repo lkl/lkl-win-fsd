@@ -21,4 +21,10 @@ ULONG GetProcessNameOffset(VOID);
 PCHAR GetCurrentProcessName();
 
 
+/* string representations for some common file system related constants */
+PCHAR IrpMjToString(unsigned int n);
+PCHAR FileInformationClassToString(unsigned int n);
+PCHAR FsInformationClassToString(unsigned int n);
+PCHAR NtStatusToString(IN NTSTATUS Status);
+
 #endif//_LKLVFS_UTIL_H__

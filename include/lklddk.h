@@ -47,6 +47,10 @@
 
 
 
+/*
+ * Get the number of elements of an array
+ */
+#define RTL_NUMBER_OF(v) ((int)(sizeof((v))/sizeof(*(v))))
 
 
 

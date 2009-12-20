@@ -1,4 +1,11 @@
 #include "lklddk.h"
+#include "util.h"
+
+#define DEBUG_IRP_MJ(irp_mj, format, ...)				\
+	do {								\
+		DbgPrint("%s %s " format "\n", GetCurrentProcessName(),	\
+			 IrpMjToString(irp_mj), __VA_ARGS__);		\
+	} while(0)
 
 static PCHAR IrpMjStrings[] = {
     "IRP_MJ_CREATE",
@@ -1029,4 +1036,189 @@ PCHAR NtStatusToString(IN NTSTATUS Status)
     case 0xC0040037: return "STATUS_PNP_IRQ_TRANSLATION_FAILED";
     default:         return "STATUS_UNKNOWN";
     }
+}
+
+VOID DbgPrintIrpCall(IN PDEVICE_OBJECT DeviceObject, IN PIRP Irp, IN PWCHAR FileName)
+{
+	PIO_STACK_LOCATION              IrpSp;
+	PEXTENDED_IO_STACK_LOCATION     ExtIrpSp;
+	PFILE_OBJECT                    FileObject;
+	FILE_INFORMATION_CLASS          FileInformationClass;
+	FS_INFORMATION_CLASS            FsInformationClass;
+	int 	                        irp_mj, irp_minor;
+
+	IrpSp = IoGetCurrentIrpStackLocation(Irp);
+	ExtIrpSp = (PEXTENDED_IO_STACK_LOCATION) IrpSp;
+
+	FileObject = IrpSp->FileObject;
+
+	irp_mj = IrpSp->MajorFunction;
+	irp_minor = IrpSp->MinorFunction;
+
+
+	switch (irp_mj) {
+	case IRP_MJ_CREATE:
+		DEBUG_IRP_MJ(irp_mj, "%ws", FileName ? : IrpSp->FileObject->FileName.Buffer ? : L"Unknown");
+		break;
+
+
+	case IRP_MJ_WRITE:
+	case IRP_MJ_READ:
+		if (irp_minor & IRP_MN_COMPLETE) {
+			DEBUG_IRP_MJ(irp_mj, "%ws IRP_MN_COMPLETE", FileName);
+		} else {
+			ULONG length;
+			LONGLONG offset;
+			if (irp_mj == IRP_MJ_READ) {
+				length = IrpSp->Parameters.Read.Length;
+				offset = IrpSp->Parameters.Read.ByteOffset.QuadPart;
+			} else if (irp_mj == IRP_MJ_WRITE) {
+				length = IrpSp->Parameters.Write.Length;
+				offset = IrpSp->Parameters.Write.ByteOffset.QuadPart;
+			}
+
+			DEBUG_IRP_MJ(irp_mj, "%ws Offset: %I64xh Length: %xh %s%s%s%s%s%s",
+				     FileName, offset, length,
+				     (irp_minor & IRP_MN_DPC ? "IRP_MN_DPC " : " "),
+				     (irp_minor & IRP_MN_MDL ? "IRP_MN_MDL " : " "),
+				     (irp_minor & IRP_MN_COMPRESSED ? "IRP_MN_COMPRESSED " : " "),
+				     (Irp->Flags & IRP_PAGING_IO ? "IRP_PAGING_IO " : " "),
+				     (Irp->Flags & IRP_NOCACHE ? "IRP_NOCACHE " : " "),
+				     (FileObject->Flags & FO_SYNCHRONOUS_IO ? "FO_SYNCHRONOUS_IO " : " "));
+		}
+		break;
+
+
+	case IRP_MJ_QUERY_INFORMATION:
+	case IRP_MJ_SET_INFORMATION:
+		if (irp_mj == IRP_MJ_QUERY_INFORMATION)
+			FileInformationClass = IrpSp->Parameters.QueryFile.FileInformationClass;
+		else
+			FileInformationClass = IrpSp->Parameters.SetFile.FileInformationClass;
+
+		if (FileInformationClass <= FileMaximumInformation)
+			DEBUG_IRP_MJ(irp_mj, "%ws %s", FileName,
+				     FileInformationClassToString(FileInformationClass));
+		else
+			DEBUG_IRP_MJ(irp_mj, "%ws Unknown FileInformationClass %u", FileName,
+				     FileInformationClass);
+		break;
+
+
+	case IRP_MJ_QUERY_VOLUME_INFORMATION:
+		FsInformationClass = IrpSp->Parameters.QueryVolume.FsInformationClass;
+
+		if (FsInformationClass <= FileFsMaximumInformation)
+			DEBUG_IRP_MJ(irp_mj, "%ws %s", FileName,
+				     FsInformationClassToString(FsInformationClass));
+		else
+			DEBUG_IRP_MJ(irp_mj, "%ws Unknown FsInformationClass %u",
+				     FileName, FsInformationClass);
+		break;
+
+
+	case IRP_MJ_DIRECTORY_CONTROL:
+		if (irp_minor & IRP_MN_QUERY_DIRECTORY) {
+			FileInformationClass = ExtIrpSp->Parameters.QueryDirectory.FileInformationClass;
+			if (FileInformationClass <= FileMaximumInformation) {
+				if (ExtIrpSp->Parameters.QueryDirectory.FileName) {
+					DEBUG_IRP_MJ(irp_mj, "%ws %s FileName: %.*S FileIndex: %x %s%s%s", FileName,
+						     FileInformationClassToString(FileInformationClass),
+						     ExtIrpSp->Parameters.QueryDirectory.FileName->Length / 2,
+						     ExtIrpSp->Parameters.QueryDirectory.FileName->Buffer,
+						     ExtIrpSp->Parameters.QueryDirectory.FileIndex,
+						     (IrpSp->Flags & SL_RESTART_SCAN ? "SL_RESTART_SCAN " : ""),
+						     (IrpSp->Flags & SL_RETURN_SINGLE_ENTRY ? "SL_RETURN_SINGLE_ENTRY " : ""),
+						     ((IrpSp->Flags & SL_INDEX_SPECIFIED) ? "SL_INDEX_SPECIFIED " : ""));
+				} else {
+					DEBUG_IRP_MJ(irp_mj, "%ws %s FileName: FileIndex: %#x %s%s%s", FileName,
+						     FileInformationClassToString(FileInformationClass),
+						     ExtIrpSp->Parameters.QueryDirectory.FileIndex,
+						     (IrpSp->Flags & SL_RESTART_SCAN ? "SL_RESTART_SCAN " : ""),
+						     (IrpSp->Flags & SL_RETURN_SINGLE_ENTRY ? "SL_RETURN_SINGLE_ENTRY " : ""),
+						     (IrpSp->Flags & SL_INDEX_SPECIFIED ? "SL_INDEX_SPECIFIED " : ""));
+				}
+			} else {
+				DEBUG_IRP_MJ(irp_mj, "%ws Unknown FileInformationClass %u", FileName, FileInformationClass);
+			}
+		} else if (irp_minor & IRP_MN_NOTIFY_CHANGE_DIRECTORY)
+			DEBUG_IRP_MJ(irp_mj, "%ws IRP_MN_NOTIFY_CHANGE_DIRECTORY", FileName);
+		else
+			DEBUG_IRP_MJ(irp_mj, "%ws Unknown minor function %#x\n", FileName, irp_minor);
+		break;
+
+
+	case IRP_MJ_FILE_SYSTEM_CONTROL:
+		if (irp_minor == IRP_MN_USER_FS_REQUEST)
+			DEBUG_IRP_MJ(irp_mj, "%ws IRP_MN_USER_FS_REQUEST FsControlCode: %#x", FileName,
+				     ExtIrpSp->Parameters.FileSystemControl.FsControlCode);
+		else if (irp_minor == IRP_MN_MOUNT_VOLUME)
+			DEBUG_IRP_MJ(irp_mj, "%ws IRP_MN_USER_MOUNT_VOLUME DeviceObject: %#x", FileName,
+				     IrpSp->Parameters.MountVolume.DeviceObject);
+		else if (irp_minor == IRP_MN_VERIFY_VOLUME)
+			DEBUG_IRP_MJ(irp_mj, "%ws IRP_MN_VERIFY_VOLUME DeviceObject: %#x", FileName,
+				     IrpSp->Parameters.VerifyVolume.DeviceObject);
+		else if (irp_minor == IRP_MN_LOAD_FILE_SYSTEM)
+			DEBUG_IRP_MJ(irp_mj, "%ws IRP_MN_LOAD_FILE_SYSTEM", FileName);
+#if (_WIN32_WINNT >= 0x0500)
+		else if (irp_minor == IRP_MN_KERNEL_CALL)
+			DEBUG_IRP_MJ(irp_mj, "%ws IRP_MN_KERNEL_CALL", FileName);
+#endif // (_WIN32_WINNT >= 0x0500)
+		else
+			DEBUG_IRP_MJ(irp_mj, "%ws Unknown minor function %#x", FileName, irp_minor);
+		break;
+
+
+	case IRP_MJ_DEVICE_CONTROL:
+		DEBUG_IRP_MJ(irp_mj, "%ws IoControlCode: %#x", FileName, IrpSp->Parameters.DeviceIoControl.IoControlCode);
+		break;
+
+
+	case IRP_MJ_LOCK_CONTROL:
+		if (irp_minor & IRP_MN_LOCK)
+			DEBUG_IRP_MJ(irp_mj, "%ws IRP_MN_LOCK Offset: %I64xh Length: %I64xh Key: %u %s%s", FileName,
+				     ExtIrpSp->Parameters.LockControl.ByteOffset.QuadPart,
+				     ExtIrpSp->Parameters.LockControl.Length->QuadPart,
+				     ExtIrpSp->Parameters.LockControl.Key,
+				     (IrpSp->Flags & SL_FAIL_IMMEDIATELY ? "SL_FAIL_IMMEDIATELY " : ""),
+				     (IrpSp->Flags & SL_EXCLUSIVE_LOCK ? "SL_EXCLUSIVE_LOCK " : ""));
+		else if (irp_minor & IRP_MN_UNLOCK_SINGLE)
+			DEBUG_IRP_MJ(irp_mj, "%ws IRP_MN_UNLOCK_SINGLE Offset: %I64xh Length: %I64xh Key: %u", FileName,
+				     ExtIrpSp->Parameters.LockControl.ByteOffset.QuadPart,
+				     ExtIrpSp->Parameters.LockControl.Length->QuadPart,
+				     ExtIrpSp->Parameters.LockControl.Key);
+		else if (irp_minor & IRP_MN_UNLOCK_ALL)
+			DEBUG_IRP_MJ(irp_mj, "%ws IRP_MN_UNLOCK_ALL", FileName);
+		else if (irp_minor & IRP_MN_UNLOCK_ALL_BY_KEY)
+			DEBUG_IRP_MJ(irp_mj, "%ws IRP_MN_UNLOCK_ALL_BY_KEY Key: %u", FileName,
+				     ExtIrpSp->Parameters.LockControl.Key);
+		else
+			DEBUG_IRP_MJ(irp_mj, "%ws Unknown minor function %#x", FileName, irp_minor);
+
+		break;
+
+
+	case IRP_MJ_CLOSE:
+	case IRP_MJ_CLEANUP:
+	case IRP_MJ_SHUTDOWN:
+#if (_WIN32_WINNT >= 0x0500)
+	case IRP_MJ_PNP:
+#endif // (_WIN32_WINNT >= 0x0500)
+	default:
+		DEBUG_IRP_MJ(irp_mj, "%ws", FileName);
+		break;
+	}
+}
+
+VOID DbgPrintIrpComplete(IN PIRP Irp, IN BOOLEAN bPrint)
+{
+	PIO_STACK_LOCATION IrpSp;
+
+	if (!bPrint || !Irp || (Irp->IoStatus.Status == STATUS_SUCCESS))
+		return;
+
+	IrpSp = IoGetCurrentIrpStackLocation(Irp);
+	DEBUG_IRP_MJ(IrpSp->MajorFunction, "Status: %s (%#x).",
+		     NtStatusToString(Irp->IoStatus.Status),
+		     Irp->IoStatus.Status);
 }

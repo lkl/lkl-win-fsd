@@ -14,6 +14,7 @@ static NTSTATUS LklFileSystemDriverFini(PDRIVER_OBJECT driver)
 {
 	IoUnregisterFileSystem(g_lklvfs->device);
 	IoDeleteSymbolicLink((PUNICODE_STRING) &lkl_dos_dev);
+	ExDeleteNPagedLookasideList(&g_lklvfs->IrpContextLL);
 	VcbListFini(&g_lklvfs->vcb_list);
 	IoDeleteDevice(g_lklvfs->device);
 	ExFreePoolWithTag(g_lklvfs, 'LKLG');
@@ -94,6 +95,10 @@ static NTSTATUS LklFileSystemDriverInit(PDRIVER_OBJECT driver, PUNICODE_STRING r
 	status = VcbListInit(&g_lklvfs->vcb_list);
 	if (status != STATUS_SUCCESS)
 		goto free_device;
+
+	ExInitializeNPagedLookasideList(&(g_lklvfs->IrpContextLL), NULL, NULL, 0,
+					sizeof(LKL_IRP_CONTEXT), 'PRIE', 0);
+
 
 	/* create visible link to the fs device for unloading */
 	status = IoCreateSymbolicLink((PUNICODE_STRING) &lkl_dos_dev,

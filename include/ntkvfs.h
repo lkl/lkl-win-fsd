@@ -243,5 +243,10 @@ VOID LklFreeIrpContext(IN PLKL_IRP_CONTEXT IrpContext);
 VOID LklCompleteIrpContext(IN PLKL_IRP_CONTEXT IrpContext, IN NTSTATUS status);
 
 
+/*
+ * Dispatch routines
+ */
+NTSTATUS LklFileSystemControl(IN PLKL_IRP_CONTEXT IrpContext);
+
 #endif //_NTKVFS_H__
 

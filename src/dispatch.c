@@ -58,6 +58,8 @@ NTSTATUS LklDispatchRequest(IN PLKL_IRP_CONTEXT IrpContext)
 	       (IrpContext->Identifier.Size == sizeof(LKL_IRP_CONTEXT)));
 
 	switch (IrpContext->MajorFunction) {
+	case IRP_MJ_FILE_SYSTEM_CONTROL:
+		return LklFileSystemControl(IrpContext);
 	default:
 		DEBUG(DL_ERR, ("LklDispatchRequest: Unexpected major function: %xh\n",
 			       IrpContext->MajorFunction));

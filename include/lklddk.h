@@ -53,6 +53,30 @@
 #define RTL_NUMBER_OF(v) ((int)(sizeof((v))/sizeof(*(v))))
 
 
+/*
+ * Get the severity code of a status value.
+ * The first two bits of the status value represent the severity code.
+ *
+ * The structure of a status code is described in "Chapter 3:
+ * Structured Driver Development" from "Windows NT File System
+ * Internals, A Developer's Guide", by Rajeev Nagar, O'REILLY.
+ */
+#define _NT_STATUS_SEVERITY(x) ((NTSTATUS)(x) >> 30)
+
+/*
+ * Is the given status code and informational status code, a warning
+ * or an error?  
+ *
+ * STATUS_SEVERITY_INFORMATIONAL, STATUS_SEVERITY_WARNING and
+ * STATUS_SEVERITY_ERROR are defined by mingw
+ */
+#define NT_INFORMATION(x) (_NT_STATUS_SEVERITY(x) == STATUS_SEVERITY_INFORMATIONAL)
+#define NT_WARNING(x)     (_NT_STATUS_SEVERITY(x) == STATUS_SEVERITY_WARNING)
+#define NT_ERROR(x)       (_NT_STATUS_SEVERITY(x) == STATUS_SEVERITY_ERROR)
+
+
+
+
 
 /********************************************************************/
 /*

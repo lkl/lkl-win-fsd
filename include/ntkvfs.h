@@ -121,6 +121,10 @@ typedef struct _LKL_VCB {
 	FSRTL_COMMON_FCB_HEADER   Header;
 	LKL_IDENTIFIER            Identifier;
 
+	// Locking resources
+	ERESOURCE                 MainResource;
+	ERESOURCE                 PagingIoResource;
+
 	LIST_ENTRY                next;
 
 	PDEVICE_OBJECT            volume_dev;
@@ -133,6 +137,9 @@ typedef struct _LKL_VCB {
 	LKL_MOUNT_POINT           mount_point;
 	ULONG                     Flags;
 } LKL_VCB, *PLKL_VCB;
+
+
+BOOLEAN LklVcbIsMounted(IN PLKL_VCB vcb);
 
 //
 // LKL_FCB File Control Block

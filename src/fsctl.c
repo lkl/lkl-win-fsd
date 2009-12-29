@@ -283,6 +283,11 @@ free_vol_dev:
 	return status;
 }
 
+BOOLEAN LklVcbIsMounted(IN PLKL_VCB vcb)
+{
+	return IS_SET(vcb->Flags, VCB_MOUNTED);
+}
+
 static NTSTATUS LklVerifyVolume(IN PLKL_IRP_CONTEXT IrpContext)
 {
 	return STATUS_DRIVER_INTERNAL_ERROR;

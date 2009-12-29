@@ -93,6 +93,9 @@ NTSTATUS LklVcbInit(IN PDEVICE_OBJECT volume_dev,
 	vcb->volume_dev = volume_dev;
 	vcb->vpb = vpb;
 
+	ExInitializeResourceLite(&vcb->MainResource);
+	ExInitializeResourceLite(&vcb->PagingIoResource);
+
 	return STATUS_SUCCESS;
 }
 
@@ -101,6 +104,8 @@ NTSTATUS LklVcbFini(IN PLKL_VCB vcb)
 	ASSERT(vcb->Identifier.Type == VCB);
 	ASSERT(vcb->Identifier.Size == sizeof(LKL_VCB));
 
+	ExDeleteResourceLite(&vcb->PagingIoResource);
+	ExDeleteResourceLite(&vcb->MainResource);
 
 	/* Don't release the vcb_device here. We didn't allocate it so
 	 * we shouldn't take care of it!

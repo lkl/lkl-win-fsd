@@ -71,3 +71,40 @@ VOID LklFreeIrpContext(IN PLKL_IRP_CONTEXT IrpContext)
 
 	ExFreeToNPagedLookasideList(&(g_lklvfs->IrpContextLL), IrpContext);
 }
+
+
+NTSTATUS LklVcbInit(IN PDEVICE_OBJECT volume_dev,
+		    IN PDEVICE_OBJECT physical_dev,
+		    IN PVPB vpb, IN OUT PLKL_VCB *pvcb)
+{
+	PLKL_VCB vcb = NULL;
+
+	/*
+	 * The memory for the vcb must already be allocated in the
+	 * device extension of the volume device object
+	 */
+	*pvcb = vcb = (PLKL_VCB) (volume_dev->DeviceExtension);
+	RtlZeroMemory(vcb, sizeof(LKL_VCB));
+
+	vcb->Identifier.Type = VCB;
+	vcb->Identifier.Size = sizeof(LKL_VCB);
+
+	vcb->physical_dev = physical_dev;
+	vcb->volume_dev = volume_dev;
+	vcb->vpb = vpb;
+
+	return STATUS_SUCCESS;
+}
+
+NTSTATUS LklVcbFini(IN PLKL_VCB vcb)
+{
+	ASSERT(vcb->Identifier.Type == VCB);
+	ASSERT(vcb->Identifier.Size == sizeof(LKL_VCB));
+
+
+	/* Don't release the vcb_device here. We didn't allocate it so
+	 * we shouldn't take care of it!
+	 *   //IoDeleteDevice(vcb->vcb_device);
+	 */
+	return STATUS_SUCCESS;
+}

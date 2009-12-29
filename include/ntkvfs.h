@@ -1,6 +1,8 @@
 #ifndef _NTKVFS_H__
 #define _NTKVFS_H__
 
+#include <asm/env.h>
+#include <ddk/ntdddisk.h>
 #include "lklddk.h"
 #include "util.h"
 
@@ -87,6 +89,50 @@ typedef struct _LKL_FCBVCB {
 } LKL_FCBVCB, *PLKL_FCBVCB;
 
 
+
+typedef struct _LKL_MOUNT_POINT {
+	CHAR            mnt_path[255];
+	__kernel_dev_t  devt;
+} LKL_MOUNT_POINT, *PLKL_MOUNT_POINT;
+
+//
+// Flags for LKL_VCB
+//
+#define VCB_INITIALIZED         0x00000001
+#define VCB_VOLUME_LOCKED       0x00000002
+#define VCB_MOUNTED             0x00000004
+#define VCB_DISMOUNT_PENDING    0x00000008
+#define VCB_NEW_VPB             0x00000010
+#define VCB_BEING_CLOSED        0x00000020
+
+#define VCB_ARRIVAL_NOTIFIED    0x00800000
+
+#define VCB_READ_ONLY           0x08000000
+#define VCB_WRITE_PROTECTED     0x10000000
+#define VCB_FLOPPY_DISK         0x20000000
+#define VCB_REMOVAL_PREVENTED   0x40000000
+#define VCB_REMOVABLE_MEDIA     0x80000000
+
+//
+// LKL_FCB Volume Control Block
+//
+typedef struct _LKL_VCB {
+	// command header for VCB and FCB
+	FSRTL_COMMON_FCB_HEADER   Header;
+	LKL_IDENTIFIER            Identifier;
+
+	LIST_ENTRY                next;
+
+	PDEVICE_OBJECT            volume_dev;
+	PDEVICE_OBJECT            physical_dev;
+	PVPB                      vpb;
+
+	DISK_GEOMETRY             disk_geometry;
+	PARTITION_INFORMATION     partition_information;
+
+	LKL_MOUNT_POINT           mount_point;
+	ULONG                     Flags;
+} LKL_VCB, *PLKL_VCB;
 
 //
 // LKL_FCB File Control Block
@@ -241,6 +287,10 @@ VOID LklDbgPrintIrpCall(IN PDEVICE_OBJECT DeviceObject, IN PIRP Irp);
 PLKL_IRP_CONTEXT LklAllocateIrpContext(IN PDEVICE_OBJECT DeviceObject, IN PIRP Irp);
 VOID LklFreeIrpContext(IN PLKL_IRP_CONTEXT IrpContext);
 VOID LklCompleteIrpContext(IN PLKL_IRP_CONTEXT IrpContext, IN NTSTATUS status);
+NTSTATUS LklVcbInit(IN PDEVICE_OBJECT volume_dev,
+		    IN PDEVICE_OBJECT physical_dev,
+		    IN PVPB vpb, IN OUT PLKL_VCB *pvcb);
+NTSTATUS LklVcbFini(IN PLKL_VCB vcb);
 
 
 /*

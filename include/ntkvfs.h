@@ -297,6 +297,7 @@ NTSTATUS LklVcbFini(IN PLKL_VCB vcb);
  * Dispatch routines
  */
 NTSTATUS LklFileSystemControl(IN PLKL_IRP_CONTEXT IrpContext);
+NTSTATUS LklCreate(IN PLKL_IRP_CONTEXT IrpContext);
 
 #endif //_NTKVFS_H__
 

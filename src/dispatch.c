@@ -58,6 +58,8 @@ NTSTATUS LklDispatchRequest(IN PLKL_IRP_CONTEXT IrpContext)
 	       (IrpContext->Identifier.Size == sizeof(LKL_IRP_CONTEXT)));
 
 	switch (IrpContext->MajorFunction) {
+	case IRP_MJ_CREATE:
+		return LklCreate(IrpContext);
 	case IRP_MJ_FILE_SYSTEM_CONTROL:
 		return LklFileSystemControl(IrpContext);
 	default:

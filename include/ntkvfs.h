@@ -231,6 +231,7 @@ static inline int LklCanIWait(PLKL_IRP_CONTEXT IrpContext)
 #define DL_MAP      DL_EXT	   /* retrieval points */
 
 extern ULONG DebugLevel;
+#define DEBUG(_DL, arg) do {if (_DL <= DL_ERR) DbgPrint arg;} while(0)
 
 PCHAR NtStatusToString(IN NTSTATUS Status );
 VOID DbgPrintIrpComplete(IN PIRP Irp, IN BOOLEAN bPrint);
@@ -239,6 +240,7 @@ VOID LklDbgPrintIrpCall(IN PDEVICE_OBJECT DeviceObject, IN PIRP Irp);
 
 PLKL_IRP_CONTEXT LklAllocateIrpContext(IN PDEVICE_OBJECT DeviceObject, IN PIRP Irp);
 VOID LklFreeIrpContext(IN PLKL_IRP_CONTEXT IrpContext);
+VOID LklCompleteIrpContext(IN PLKL_IRP_CONTEXT IrpContext, IN NTSTATUS status);
 
 
 #endif //_NTKVFS_H__

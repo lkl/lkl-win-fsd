@@ -159,4 +159,69 @@ DDKAPI NTSTATUS LklVfsBuildRequest(IN PDEVICE_OBJECT device, IN PIRP Irp)
 }
 
 
+/*
+ * Lock the Irp, all associated buffers (e.g. read/write user buffers)
+ * and mark the Irp as pending.
+ */
+VOID LklLockIrp(IN PLKL_IRP_CONTEXT IrpContext, IN PIRP Irp)
+{
+	if (!Irp)
+		return;
+	IoMarkIrpPending(Irp);
+}
+
+/*
+ * This runs as a work queue.
+ * It takes an IRP context and re-dispatches it.
+ *
+ * NOTE: This function will be called by the kernel: DDKAPI is
+ * mandatory for correct argument passing.
+ */
+DDKAPI VOID LklDeQueueRequest(IN PVOID Context)
+{
+	PLKL_IRP_CONTEXT IrpContext = (PLKL_IRP_CONTEXT) Context;
+
+	ASSERT(IrpContext);
+	ASSERT((IrpContext->Identifier.Type == ICX) &&
+	       (IrpContext->Identifier.Size == sizeof(LKL_IRP_CONTEXT)));
+
+	FsRtlEnterFileSystem();
+
+	if (!IrpContext->IsTopLevel)
+		IoSetTopLevelIrp((PIRP) FSRTL_FSP_TOP_LEVEL_IRP);
+
+	LklDispatchRequest(IrpContext);
+
+	IoSetTopLevelIrp(NULL);
+
+	FsRtlExitFileSystem();
+}
+
+
+/*
+ * Lock the IRP and all asociated buffers, mark the IRP as pending and
+ * queue it for later processing.
+ */
+NTSTATUS LklQueueRequest(IN PLKL_IRP_CONTEXT IrpContext)
+{
+	ASSERT(IrpContext);
+
+	ASSERT((IrpContext->Identifier.Type == ICX) &&
+	       (IrpContext->Identifier.Size == sizeof(LKL_IRP_CONTEXT)));
+
+	/* set the flags of "can wait" and "queued" */
+	SET_FLAG(IrpContext->Flags, IRP_CONTEXT_FLAG_WAIT);
+	SET_FLAG(IrpContext->Flags, IRP_CONTEXT_FLAG_REQUEUED);
+
+	/* make sure the buffer is kept valid in system context */
+	LklLockIrp(IrpContext, IrpContext->Irp);
+
+	/* initialize work item */
+	ExInitializeWorkItem(&IrpContext->WorkQueueItem,
+			     LklDeQueueRequest, IrpContext);
+
+	/* dispatch the work item */
+	ExQueueWorkItem(&IrpContext->WorkQueueItem, CriticalWorkQueue);
+	return STATUS_PENDING;
+}
 

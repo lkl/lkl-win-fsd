@@ -10,6 +10,8 @@ typedef struct _VCB_LIST {
 struct _LKL_VCB;
 
 NTSTATUS VcbListInit(VCB_LIST *l);
+VOID VcbListAdd(VCB_LIST *l, struct _LKL_VCB *vcb);
+VOID VcbListDel(VCB_LIST *l, struct _LKL_VCB *vcb);
 NTSTATUS VcbListFini(VCB_LIST *l);
 
 VOID Stop(VOID);

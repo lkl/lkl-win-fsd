@@ -7,6 +7,20 @@ NTSTATUS VcbListInit(VCB_LIST *l)
 	return ExInitializeResourceLite(&l->rwlock);
 }
 
+VOID VcbListAdd(VCB_LIST *l, struct _LKL_VCB *vcb)
+{
+	ExAcquireResourceExclusiveLite(&l->rwlock, TRUE);
+	InsertTailList(&l->list, &vcb->next);
+	ExReleaseResourceLite(&l->rwlock);
+}
+
+VOID VcbListDel(VCB_LIST *l, struct _LKL_VCB *vcb)
+{
+	ExAcquireResourceExclusiveLite(&l->rwlock, TRUE);
+	RemoveEntryList(&vcb->next);
+	ExReleaseResourceLite(&l->rwlock);
+}
+
 NTSTATUS VcbListFini(VCB_LIST *l)
 {
 	ASSERT(IsListEmpty(&l->vcb_list));

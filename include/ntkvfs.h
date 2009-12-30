@@ -14,6 +14,7 @@ const static UNICODE_STRING lkl_dos_dev = RTL_CONSTANT_STRING(LKL_DOS_DEV);
 
 
 #define IS_SET(x, f)        ((BOOLEAN) ((x) &   (f)))
+#define IS_NOT_SET(x, f)    ((BOOLEAN)!((x) &   (f)))
 #define SET_FLAG(x, f)                 ((x) |=  (f))
 #define CLR_FLAG(x, f)                 ((x) &= ~(f))
 
